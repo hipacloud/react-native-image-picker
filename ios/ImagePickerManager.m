@@ -53,12 +53,12 @@ RCT_EXPORT_METHOD(launchImageLibrary:(NSDictionary *)options callback:(RCTRespon
 - (void)launchImagePicker:(NSDictionary *)options callback:(RCTResponseSenderBlock)callback
 {
     self.callback = callback;
-    
+
     if (target == camera && [ImagePickerUtils isSimulator]) {
         self.callback(@[@{@"errorCode": errCameraUnavailable}]);
         return;
     }
-    
+
     self.options = options;
 
 #if __has_include(<PhotosUI/PHPicker.h>)
@@ -74,7 +74,7 @@ RCT_EXPORT_METHOD(launchImageLibrary:(NSDictionary *)options callback:(RCTRespon
         }
     }
 #endif
-    
+
     UIImagePickerController *picker = [[UIImagePickerController alloc] init];
     [ImagePickerUtils setupPickerFromOptions:picker options:self.options target:target];
     picker.delegate = self;
@@ -100,11 +100,11 @@ RCT_EXPORT_METHOD(launchImageLibrary:(NSDictionary *)options callback:(RCTRespon
 
 -(NSMutableDictionary *)mapImageToAsset:(UIImage *)image data:(NSData *)data {
     NSString *fileType = [ImagePickerUtils getFileType:data];
-    
+
     if ((target == camera) && [self.options[@"saveToPhotos"] boolValue]) {
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil);
     }
-    
+
     if (![fileType isEqualToString:@"gif"]) {
         image = [ImagePickerUtils resizeImage:image
                                      maxWidth:[self.options[@"maxWidth"] floatValue]
@@ -116,7 +116,7 @@ RCT_EXPORT_METHOD(launchImageLibrary:(NSDictionary *)options callback:(RCTRespon
     } else if ([fileType isEqualToString:@"png"]) {
         data = UIImagePNGRepresentation(image);
     }
-    
+
     NSMutableDictionary *asset = [[NSMutableDictionary alloc] init];
     asset[@"type"] = [@"image/" stringByAppendingString:fileType];
 
@@ -141,7 +141,7 @@ RCT_EXPORT_METHOD(launchImageLibrary:(NSDictionary *)options callback:(RCTRespon
     asset[@"fileName"] = fileName;
     asset[@"width"] = @(image.size.width);
     asset[@"height"] = @(image.size.height);
-    
+
     return asset;
 }
 
@@ -153,10 +153,10 @@ RCT_EXPORT_METHOD(launchImageLibrary:(NSDictionary *)options callback:(RCTRespon
     if ((target == camera) && [self.options[@"saveToPhotos"] boolValue]) {
         UISaveVideoAtPathToSavedPhotosAlbum(url.path, nil, nil, nil);
     }
-    
+
     if (![url.URLByResolvingSymlinksInPath.path isEqualToString:videoDestinationURL.URLByResolvingSymlinksInPath.path]) {
         NSFileManager *fileManager = [NSFileManager defaultManager];
-        
+
         // Delete file if it already exists
         if ([fileManager fileExistsAtPath:videoDestinationURL.path]) {
             [fileManager removeItemAtURL:videoDestinationURL error:nil];
@@ -176,12 +176,19 @@ RCT_EXPORT_METHOD(launchImageLibrary:(NSDictionary *)options callback:(RCTRespon
           }
         }
     }
-    
+
     NSMutableDictionary *asset = [[NSMutableDictionary alloc] init];
+    // 获取视频文件大小
+    NSNumber *fileSizeValue = nil;
+    NSError *fileSizeError = nil;
+    [videoDestinationURL getResourceValue:&fileSizeValue forKey:NSURLFileSizeKey error:&fileSizeError];
+    if (fileSizeValue){
+        asset[@"fileSize"] = fileSizeValue;
+    }
     asset[@"duration"] = @(roundf(CMTimeGetSeconds([AVAsset assetWithURL:videoDestinationURL].duration)));
     asset[@"uri"] = videoDestinationURL.absoluteString;
     asset[@"type"] = [ImagePickerUtils getFileTypeFromUrl:videoDestinationURL];
-    
+
     return asset;
 }
 
